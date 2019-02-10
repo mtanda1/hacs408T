@@ -1,0 +1,35 @@
+import socket
+
+
+
+broadcast_mac = "\x52\x54\x00\x18\xfa\xfa"
+spoof_mac = "\x52\x54\x00\x87\xcd\xd4"
+#ethernet header
+ethernet_header = broadcast_mac #Destination Mac
+ethernet_header += spoof_mac #source MAC
+ethernet_header += "\x08\x06" # ARP Type: 0x0806
+#build arp packet
+arp_data = "\x00\x01" #Ethernet type
+arp_data += "\x08\x00" #IP Protocol
+arp_data += "\x06" #addr length
+arp_data += "\x04" #prot addr length
+arp_data += "\x00\x01" #operation = request
+arp_data += "\x52\x54\x00\x87\xcd\xd4" #sender hardware address (my mac address)
+arp_data += "\xac\x1e\x00\x17" #sender protocol address (my ip address-> this has to be done  
+arp_data += "\x52\x54\x00\x18\xfa\xfa" #target hardware address set to all 0
+arp_data += "\xac\x1e\x00\x70" #target IP increment based on subnet and IP
+
+
+#finish arp packet here
+frame = ethernet_header + arp_data
+
+
+
+sock = socket.socket(socket.PF_PACKET,socket.SOCK_RAW, socket.htons(3))
+sock.bind(('eth0',0))
+
+sock.sendall(frame)
+print("sent")
+print(sock.recv(1024))
+print("rec")
+#sock.close()

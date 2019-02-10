@@ -1,0 +1,58 @@
+import threading
+import socket
+from time import sleep
+import struct
+
+def arpscan(sock):
+	broadcast_mac = "\x52\x54\x00\x18\xfa\xfa"
+	spoof_mac = "\x52\x54\x00\x87\xcd\xd4"
+	#ethernet header
+	ethernet_header = broadcast_mac #Destination Mac
+	ethernet_header += spoof_mac #source MAC
+	ethernet_header += "\x08\x06" # ARP Type: 0x0806
+	#build arp packet
+	arp_data = "\x00\x01" #Ethernet type
+	arp_data += "\x08\x00" #IP Protocol
+	arp_data += "\x06" #addr length
+	arp_data += "\x04" #prot addr length
+	arp_data += "\x00\x01" #operation = request
+	arp_data += "\x52\x54\x00\x87\xcd\xd4" #sender hardware address (my mac address)
+	arp_data += "\xac\x1e\x00\x17" #sender protocol address (my ip address-> this has to be done  
+	arp_data += "\x00\x00\x00\x00\x00\x00" #\x52\x54\x00\x18\xfa\xfa" #target hardware address set to all 0
+	arp_data += "\xac\x1e\x00\x70" #target IP increment based on subnet and IP
+
+
+	#finish arp packet here
+	frame = ethernet_header + arp_data
+	#create raw socket
+	
+
+	sock.sendall(frame)
+	print("sent data")
+	
+
+def rec(sock):
+	#print("in rec")
+	byte = sock.recvfrom(20000)
+	#print(byte)
+	#print(byte[1][4])
+	#print(len(byte[1][4]))
+	numb="B"*len(byte[1][4])
+	print(struct.unpack(numb,byte[1][4]))
+	#print("red term")
+
+sock = socket.socket(socket.PF_PACKET,socket.SOCK_RAW, socket.htons(3))
+sock.bind(('eth0',0))
+print("socket bound")
+t = threading.Thread(target = rec, args=(sock,))
+t2 = threading.Thread(target = arpscan, args=(sock,))
+#print("threaded")
+t.start()
+t2.start()
+t.join()
+t2.join() 
+sock.close()
+
+
+#
+#get tcp 
