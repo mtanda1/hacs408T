@@ -5,6 +5,7 @@ import threading
 import socket
 from time import sleep
 import struct
+import json
 #import sys
 
 #reload(sys)
@@ -25,7 +26,7 @@ def findinterface():
                 #print(dictionary)
                 cidr = IPAddress(dictionary["netmask"]).netmask_bits()#returns subnet cidr
                 cidrip=("%s/%s" % (dictionary["addr"],cidr))
-                print(cidrip)
+                #print(cidrip)
                 iplist(interface, cidrip)
                 
 
@@ -38,6 +39,7 @@ def iplist(interface, cidrip):
 findinterface()
 
 def arpscan(sock,sender_ip,sender_mac,target_ip):
+    #print(struct.unpack('!I',target_ip))
     #print("sending data to %s" % (target_ip))
     broadcast_mac = "\xff\xff\xff\xff\xff\xff" #change this to all ff after
     sender_mac = sender_mac#"\x52\x54\x00\x1e\x33\x45" #sender_mac
@@ -69,7 +71,7 @@ def rec(sock,target_ip):
     if(resp[2]==2054 and resp[7]==2):
         
         tupl=(resp[0],struct.unpack('!I',target_ip))
-        
+        #print(tupl)
         activeMacIp.append(tupl)
 
 s=netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']
@@ -94,10 +96,62 @@ for tupl in listip:
     t2.join() 
     sock.close()
 
-
 #
-#get ports
+#port scanner
 
-#for ip in activeMacIp:
-#    print ip
-#    sock = socket
+activeports = []
+#activeMacIp.append(('eth0',"RT\\x00\\x1e3E", (167903362,)))
+def portscanner():
+    for ip in activeMacIp:
+        #print str(ip[1])
+
+        print(str(IPAddress(ip[1][0])))
+        #print("Mac address in bytes: %s") % (activeMacIp[0])
+        #print("%x:%x:%x:%x:%x:%x" % struct.unpack('BBBBBB', activeMacIp[0]))
+        # print(activeMacIp[0][0])
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #print(sock.connect((str(IPAddress(ip[1][0])),8000)))
+        #byte = sock.recvfrom(20000)
+        sock.close()
+        for port in range(1,65535):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(1)
+            try:
+                is_active=sock.connect((str(IPAddress(ip[1][0])),port))
+                #print(port)
+                #print(str(is_active))
+                if(str(is_active)=="None"):
+                    #print(port)
+                    sock.sendall("GET / HTTP/1.1\r\n\r\n")
+                    byte = sock.recvfrom(20000)
+                    #print(byte)
+                    if("SSH"in byte[0]):
+                        print("port %s : SSH") % (port)
+                    elif("SMTP" in byte[0].upper()):
+                        print("port %s : SMTP") % (port)
+                    elif("\xff" in byte[0]):
+                        print("port %s : telnet") % (port)
+                    elif("FTP"in byte[0]):
+                        print("port %s : FTP server") % (port)
+                    elif(str(byte[0])=="HTTP/1.0\n"):
+                        print("port %s : echo server") % (port)
+                    elif("HTTP/1.0 200 OK" in str(byte[0])):
+                        print("port %s : HTTP") % (port)
+                    else:
+                        print("port %s : other")  % (port)
+                sock.close()
+                    #print(type(str(byte[0])))
+                    #print(s)
+            except:
+                sock.close()
+        print(' ')
+portscanner()
+
+#scan={"machines":''}
+#interfacesdict = {}
+#interfacesdict[] = {}
+#scan['machines'] = interfacesdict
+
+
+
+
