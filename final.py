@@ -33,7 +33,9 @@ def findinterface():
 #after I find IP, I need to convert the subnetmask to size and add to gateway
 def iplist(interface, cidrip):
     for ip in IPNetwork(cidrip):
+        #print(ip)
         tup = (interface,struct.pack('!I',int(hex(ip),16)))
+        #print(tup)
         listip.append(tup)
 
 findinterface()
@@ -65,14 +67,16 @@ def arpscan(sock,sender_ip,sender_mac,target_ip):
     sock.sendall(frame)
     
 def rec(sock,target_ip):
-    
-    byte = sock.recvfrom(20000)
-    resp = struct.unpack('!6s6sHHHBBH6s6s6s6s',byte[0][0:46])
-    if(resp[2]==2054 and resp[7]==2):
-        
-        tupl=(resp[0],struct.unpack('!I',target_ip))
-        #print(tupl)
-        activeMacIp.append(tupl)
+    try:
+        byte = sock.recvfrom(20000)
+        resp = struct.unpack('!6s6sHHHBBH6s6s6s6s',byte[0][0:46])
+        if(resp[2]==2054 and resp[7]==2):
+            
+            tupl=(resp[0],struct.unpack('!I',target_ip))
+            #print(tupl)
+            activeMacIp.append(tupl)
+    except:
+        pass
 
 s=netifaces.ifaddresses('eth0')[netifaces.AF_LINK][0]['addr']
 
@@ -86,16 +90,19 @@ for tupl in listip:
     sock = socket.socket(socket.PF_PACKET,socket.SOCK_RAW, socket.htons(3))
     sock.bind((tupl[0],0))
     sender_mac=sock.getsockname()[4]
+    sock.settimeout(.5)
 
     t = threading.Thread(target = rec, args=(sock,target_ip))
     t2 = threading.Thread(target = arpscan, args=(sock,sender_ip,sender_mac,target_ip))
 
-    t.start()
-    t2.start()
-    t.join()
-    t2.join() 
-    sock.close()
-
+    try:
+        t.start()
+        t2.start()
+        t.join()
+        t2.join() 
+        sock.close()
+    except:
+        pass
 #
 #port scanner
 

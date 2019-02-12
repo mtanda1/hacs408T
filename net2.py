@@ -30,6 +30,7 @@ def findinterface():
 
                 cidrip=("%s/%s" % (dictionary["addr"],cidr))
                 print(cidrip)
+                print("in the loop")
                 iplist(interface, cidrip)
                 #for data in dictionary:
                     #print(data)
@@ -41,19 +42,25 @@ def findinterface():
 
 #after I find IP, I need to convert the subnetmask to size and add to gateway
 def iplist(interface, cidrip):
+    i=1
+    gateway=netifaces.gateways()
+    print(netifaces.gateways())
     for ip in IPNetwork(cidrip):
-        tup = (interface,struct.pack('!I',int(hex(ip),16)))
-        #tup = (interface,socket.inet_aton(str(ip)))
-        listip.append(tup)
-
+        if(i >=2):
+            tup = (interface,struct.pack('!I',int(hex(ip),16)))
+            #tup = (interface,socket.inet_aton(str(ip)))
+            listip.append(tup)
+            #print('hi')
+            print(i)
+        i=i+1
 
 findinterface()
 
 
 def arpscan(sock,sender_ip,sender_mac,target_ip):
-    print("sending data to %s" % (target_ip))
+    #print("sending data to %s" % (target_ip))
     broadcast_mac = "\xff\xff\xff\xff\xff\xff" #change this to all ff after
-    sender_mac = sender_mac#"\x52\x54\x00\x1e\x33\x45" #sender_mac
+    sender_mac = sender_mac#"\x52\x54\x00\x1e\x33\x45"# #sender_mac
     #ethernet header
     ethernet_header = broadcast_mac #Destination Mac
     #print(type(sender_mac))
@@ -68,7 +75,7 @@ def arpscan(sock,sender_ip,sender_mac,target_ip):
     arp_data += sender_mac #sender hardware address (my mac address)
     arp_data += sender_ip # "\x0a\x02\x00\x81"#sender protocol address (my ip address-> this has to be done  
     arp_data += "\x00\x00\x00\x00\x00\x00" #\x52\x54\x00\x18\xfa\xfa" #target hardware address set to all 0
-    arp_data += target_ip #"\x0a\x02\x00\x82" #target IP increment based on subnet and IP
+    arp_data += target_ip#"\x0a\x02\x00\x83" #target IP increment based on subnet and IP
 
 
     #finish arp packet here
@@ -77,18 +84,21 @@ def arpscan(sock,sender_ip,sender_mac,target_ip):
     
 
     sock.sendall(frame)
-    print("sent data")
+    #print("sent data")
     
 
 def rec(sock,target_ip):
     #print("in rec")
-    byte = sock.recvfrom(20000)
-    resp = struct.unpack('!6s6sHHHBBH6s6s6s6s',byte[0][0:46])
-    if(resp[2]==2054 and resp[7]==2):
-        #print(resp)
-        tupl=(resp[0],struct.unpack('!I',target_ip))
-        #print(tupl)
-        activeMacIp.append(tupl)
+    try:
+        byte = sock.recvfrom(20000)
+        resp = struct.unpack('!6s6sHHHBBH6s6s6s6s',byte[0][0:46])
+        if(resp[2]==2054 and resp[7]==2):
+            #print(resp)
+            tupl=(resp[0],struct.unpack('!I',target_ip))
+            #print(tupl)
+            activeMacIp.append(tupl)
+    except:
+        pass
     #print(byte[0][0:14])
     #print(byte[1][4])
     #print(len(byte[1][4]))
@@ -113,6 +123,7 @@ for tupl in listip:
 #print(socket.inet_aton(sender_ip))
     #sender_mac=netifaces.ifaddresses(tupl[0])[netifaces.AF_LINK][0]['addr']
     target_ip=tupl[1]
+    #print(target_ip)
     #print(struct.unpack('!I',target_ip))
     #sender_mac=sender_mac.replace(':','\\x')
     #sender_mac=str(('\\x'+sender_mac))
@@ -125,23 +136,30 @@ for tupl in listip:
     
     sock = socket.socket(socket.PF_PACKET,socket.SOCK_RAW, socket.htons(3))
     sock.bind((tupl[0],0))
+    #print(tupl[0])
     sender_mac=sock.getsockname()[4]
+    sock.settimeout(1.5)
+
+
+
+
     #print("socket bound")
     t = threading.Thread(target = rec, args=(sock,target_ip))
     t2 = threading.Thread(target = arpscan, args=(sock,sender_ip,sender_mac,target_ip))
 
-
-    t.start()
-    t2.start()
-    t.join()
-    t2.join() 
-    sock.close()
-
+    try:
+        t.start()
+        t2.start()
+        t.join()
+        t2.join() 
+        sock.close()
+    except:
+        sock.close()
 
 #
 #get ports
 
-for ip in activeMacIp:
+#for ip in activeMacIp:
     #print ip
-    sock = socket.socket(socket.AF_NET, socket.SOCK_STREAM)
-    sock.connect_ex()
+    #sock = socket.socket(socket.AF_NET, socket.SOCK_STREAM)
+    #sock.connect_ex()
